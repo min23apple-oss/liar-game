@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ワールドウルフ</title>
+    <title>온라인 라이어 게임 (바보모드)</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -19,9 +19,10 @@
             width: 100%; max-width: 400px;
         }
         h1 { color: #222; margin-bottom: 20px; font-size: 24px; }
-        input {
+        input, select {
             width: 100%; padding: 14px; margin: 8px 0; border: 2px solid #e1e4e8;
             border-radius: 10px; font-size: 16px; text-align: center; outline: none;
+            background-color: white;
         }
         .btn {
             width: 100%; background-color: #4CAF50; color: white; border: none;
@@ -37,7 +38,7 @@
         }
         .btn-select:active { background-color: #e8f5e9; }
         .card { background-color: #f8f9fa; border: 2px dashed #4CAF50; padding: 25px 15px; border-radius: 15px; margin: 20px 0; }
-        .word { font-size: 22px; font-weight: bold; color: #e74c3c; margin-top: 15px; }
+        .word { font-size: 24px; font-weight: bold; color: #e74c3c; margin-top: 15px; }
         .result-box { font-size: 20px; font-weight: bold; padding: 20px; border-radius: 12px; margin: 20px 0; }
         .result-correct { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .result-wrong { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
@@ -45,29 +46,37 @@
         ul { list-style: none; padding: 0; margin: 15px 0; }
         li { padding: 12px; background: #f1f3f5; margin: 6px 0; border-radius: 8px; font-weight: 500; }
         hr { border: 0; height: 1px; background: #eee; margin: 20px 0; }
+        label { font-weight: bold; display: block; margin-top: 15px; text-align: left; color: #555; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🎭 ワールドウルフ</h1>
+    <h1>🤡 라이어 게임 (바보모드)</h1>
 
     <!-- 1. 로그인/방 입장 화면 -->
     <div id="login-screen">
-        <input type="text" id="nickname-input" placeholder="名前を書いてください"><br>
-        <button class="btn" onclick="createRoom()">部屋を作る</button>
+        <input type="text" id="nickname-input" placeholder="닉네임 입력"><br>
+        <button class="btn" onclick="createRoom()">방 만들기</button>
         <hr>
-        <input type="text" id="room-id-input" placeholder="部屋コード"><br>
-        <button class="btn btn-secondary" onclick="joinRoom()">部屋に参加する</button>
+        <input type="text" id="room-id-input" placeholder="방 코드 4자리"><br>
+        <button class="btn btn-secondary" onclick="joinRoom()">방 참여하기</button>
     </div>
 
     <!-- 2. 대기실 화면 -->
     <div id="lobby-screen" class="hidden">
-        <h2>部屋コード: <span id="display-room-id" style="color: #e74c3c;"></span></h2>
-        <h3>参加人数 (<span id="player-count">0</span>/6)</h3>
+        <h2>방 코드: <span id="display-room-id" style="color: #e74c3c;"></span></h2>
+        
+        <!-- 방장 전용 카테고리 선택 창 -->
+        <div id="category-select-box" class="hidden">
+            <label for="category-select">📌 카테고리 선택:</label>
+            <select id="category-select"></select>
+        </div>
+
+        <h3>참여 인원 (<span id="player-count">0</span>/6)</h3>
         <ul id="player-list"></ul>
-        <button id="start-btn" class="btn hidden" onclick="startGame()">スタート！</button>
-        <p id="wait-msg" style="color: #666;">ちょっと待ってください！</p>
+        <button id="start-btn" class="btn hidden" onclick="startGame()">게임 시작하기</button>
+        <p id="wait-msg" style="color: #666;">방장이 게임을 시작하기를 기다리는 중...</p>
     </div>
 
     <!-- 3. 게임 진행 화면 -->
@@ -77,7 +86,7 @@
             <p>카테고리: <strong id="display-category"></strong></p>
             <div id="display-word" class="word"></div>
         </div>
-        <p>순서대로 단어를 지혜롭게 설명하세요!</p>
+        <p style="color: #888; font-size: 14px;">⚠️ 자신도 모르는 사이에 다른 단어를 받은 '바보'가 있을 수 있습니다!</p>
         <button id="host-end-btn" class="btn btn-danger hidden" onclick="requestVoteScreen()">게임 종료 및 라이어 지목</button>
     </div>
 
@@ -85,7 +94,7 @@
     <div id="vote-screen" class="hidden">
         <h2>라이어 지목</h2>
         <div id="host-vote-section" class="hidden">
-            <p>라이어라고 생각하는 사람을 선택하세요:</p>
+            <p>혼자 이상한 소리를 한 사람을 선택하세요!</p>
             <div id="candidate-list"></div>
         </div>
         <div id="guest-vote-section" class="hidden">
@@ -98,10 +107,7 @@
         <h2>검증 결과</h2>
         <div id="result-message" class="result-box"></div>
         
-        <!-- 라이어를 맞췄을 때 (방장용) -->
         <button id="restart-btn" class="btn hidden" onclick="restartGame()">새 게임으로 이동 (대기실)</button>
-        
-        <!-- 라이어를 틀렸을 때 (방장용) -->
         <button id="retry-vote-btn" class="btn btn-secondary hidden" onclick="backToVoteScreen()">다시 지목하기</button>
     </div>
 </div>
@@ -125,7 +131,11 @@
         socket.emit('joinRoom', { roomId, nickname: myNickname });
     }
 
-    function startGame() { socket.emit('startGame', currentRoomId); }
+    function startGame() { 
+        const selectedCategory = document.getElementById('category-select').value;
+        socket.emit('startGame', { roomId: currentRoomId, selectedCategory }); 
+    }
+
     function requestVoteScreen() { socket.emit('requestVoteScreen', currentRoomId); }
     function restartGame() { socket.emit('restartGame', currentRoomId); }
 
@@ -138,15 +148,29 @@
         document.getElementById('vote-screen').classList.remove('hidden');
     }
 
-    socket.on('roomCreated', ({ roomId, isHost }) => {
+    // 카테고리 셀렉트박스 채우기
+    function setupCategories(categories) {
+        const select = document.getElementById('category-select');
+        select.innerHTML = '';
+        categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.innerText = cat;
+            select.appendChild(opt);
+        });
+    }
+
+    socket.on('roomCreated', ({ roomId, isHost, categories }) => {
         currentRoomId = roomId;
         amIHost = isHost;
+        setupCategories(categories);
         showLobby(roomId);
     });
 
-    socket.on('joinedRoom', ({ roomId, isHost }) => {
+    socket.on('joinedRoom', ({ roomId, isHost, categories }) => {
         currentRoomId = roomId;
         amIHost = isHost;
+        setupCategories(categories);
         showLobby(roomId);
     });
 
@@ -166,13 +190,9 @@
         document.getElementById('game-screen').classList.remove('hidden');
         document.getElementById('display-category').innerText = data.category;
         
-        if (data.isLiar) {
-            document.getElementById('display-word').innerText = "🚨 당신은 라이어입니다!";
-        } else {
-            document.getElementById('display-word').innerText = `제시어: ${data.word}`;
-        }
+        // 바보모드: 누구에게나 단어가 자연스럽게 표시됩니다!
+        document.getElementById('display-word').innerText = `제시어: ${data.word}`;
 
-        // 방장에게만 게임 종료(투표) 버튼 표시
         if (data.isHost) {
             document.getElementById('host-end-btn').classList.remove('hidden');
         } else {
@@ -180,7 +200,6 @@
         }
     });
 
-    // 투표 화면 전환
     socket.on('showVoteScreen', ({ players }) => {
         hideAllScreens();
         document.getElementById('vote-screen').classList.remove('hidden');
@@ -189,7 +208,6 @@
             document.getElementById('host-vote-section').classList.remove('hidden');
             document.getElementById('guest-vote-section').classList.add('hidden');
             
-            // 참가자 선택 버튼 목록 생성
             const listDiv = document.getElementById('candidate-list');
             listDiv.innerHTML = '';
             players.forEach(p => {
@@ -205,7 +223,6 @@
         }
     });
 
-    // 결과 처리
     socket.on('voteResult', ({ candidateName, isCorrect }) => {
         hideAllScreens();
         document.getElementById('result-screen').classList.remove('hidden');
@@ -219,16 +236,15 @@
 
         if (isCorrect) {
             msgDiv.className = 'result-box result-correct';
-            msgDiv.innerText = `🎉 ${candidateName}은(는) 라이어가 맞습니다!`;
+            msgDiv.innerText = `🎉 ${candidateName}은(는) 라이어(바보)가 맞습니다!`;
             if (amIHost) restartBtn.classList.remove('hidden');
         } else {
             msgDiv.className = 'result-box result-wrong';
-            msgDiv.innerText = `❌ ${candidateName}은(는) 라이어가 아닙니다!`;
+            msgDiv.innerText = `❌ ${candidateName}은(는) 억울한 시민입니다!`;
             if (amIHost) retryBtn.classList.remove('hidden');
         }
     });
 
-    // 대기실로 돌아가기
     socket.on('returnToLobby', () => {
         hideAllScreens();
         document.getElementById('lobby-screen').classList.remove('hidden');
@@ -243,9 +259,11 @@
 
         if (amIHost) {
             document.getElementById('start-btn').classList.remove('hidden');
+            document.getElementById('category-select-box').classList.remove('hidden');
             document.getElementById('wait-msg').classList.add('hidden');
         } else {
             document.getElementById('start-btn').classList.add('hidden');
+            document.getElementById('category-select-box').classList.add('hidden');
             document.getElementById('wait-msg').classList.remove('hidden');
         }
     }
