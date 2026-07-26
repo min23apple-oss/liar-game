@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>온라인 라이어 게임</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <!-- Socket.io CDN 사용으로 파일 로드 오류 해결 -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -68,9 +69,10 @@
 </div>
 
 <script>
-    const socket = io();
+    // 변수 선언을 함수 상단으로 위치 조정
     let currentRoomId = '';
     let myNickname = '';
+    const socket = io();
 
     function createRoom() {
         myNickname = document.getElementById('nickname-input').value.trim();
