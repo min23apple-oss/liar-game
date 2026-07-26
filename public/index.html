@@ -191,7 +191,7 @@
         document.getElementById('display-category').innerText = data.category;
         
         // 바보모드: 누구에게나 단어가 자연스럽게 표시됩니다!
-        document.getElementById('display-word').innerText = `제시어: ${data.word}`;
+        document.getElementById('display-word').innerText = `単語: ${data.word}`;
 
         if (data.isHost) {
             document.getElementById('host-end-btn').classList.remove('hidden');
@@ -236,7 +236,7 @@
 
         if (isCorrect) {
             msgDiv.className = 'result-box result-correct';
-            msgDiv.innerText = `🎉 ${candidateName}은(는) はウルフです！`;
+            msgDiv.innerText = `🎉 ${candidateName}はウルフです！`;
             if (amIHost) restartBtn.classList.remove('hidden');
         } else {
             msgDiv.className = 'result-box result-wrong';
