@@ -61,7 +61,7 @@ io.on('connection', (socket) => {
     if (room.players.length < 2) return socket.emit('errorMsg', '최소 2명 이상이어야 합니다.');
 
     // 선택한 카테고리의 단어 목록 불러오기
-    const list = wordData[selectedCategory] || wordData["음식"];
+    const list = wordData[selectedCategory] || wordData["物"];
     
     // 최소 2개 이상의 서로 다른 단어 2개 선택 (시민용, 라이어용)
     const shuffled = [...list].sort(() => 0.5 - Math.random());
