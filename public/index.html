@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>온라인 라이어 게임</title>
+    <title>ワールドウルフ</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -50,15 +50,15 @@
 <body>
 
 <div class="container">
-    <h1>🎭 온라인 라이어 게임</h1>
+    <h1>🎭 ワールドウルフ</h1>
 
     <!-- 1. 로그인/방 입장 화면 -->
     <div id="login-screen">
-        <input type="text" id="nickname-input" placeholder="닉네임 입력"><br>
-        <button class="btn" onclick="createRoom()">방 만들기</button>
+        <input type="text" id="nickname-input" placeholder="名前を書いてください"><br>
+        <button class="btn" onclick="createRoom()">部屋を作る</button>
         <hr>
-        <input type="text" id="room-id-input" placeholder="방 코드 4자리"><br>
-        <button class="btn btn-secondary" onclick="joinRoom()">방 참여하기</button>
+        <input type="text" id="room-id-input" placeholder="部屋コード"><br>
+        <button class="btn btn-secondary" onclick="joinRoom()">部屋に参加する</button>
     </div>
 
     <!-- 2. 대기실 화면 -->
