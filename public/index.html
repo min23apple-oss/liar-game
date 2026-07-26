@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>온라인 라이어 게임</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f0f2f5;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; padding: 15px;
+        }
+        .container {
+            background-color: white; padding: 25px 20px; border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center;
+            width: 100%; max-width: 400px;
+        }
+        h1 { color: #222; margin-bottom: 20px; font-size: 24px; }
+        input {
+            width: 100%; padding: 14px; margin: 8px 0; border: 2px solid #e1e4e8;
+            border-radius: 10px; font-size: 16px; text-align: center; outline: none;
+        }
+        .btn {
+            width: 100%; background-color: #4CAF50; color: white; border: none;
+            padding: 15px; font-size: 18px; font-weight: bold; border-radius: 12px;
+            cursor: pointer; margin: 8px 0;
+        }
+        .btn-secondary { background-color: #008CBA; }
+        .card { background-color: #f8f9fa; border: 2px dashed #4CAF50; padding: 25px 15px; border-radius: 15px; margin: 20px 0; }
+        .word { font-size: 22px; font-weight: bold; color: #e74c3c; margin-top: 15px; }
+        .hidden { display: none; }
+        ul { list-style: none; padding: 0; margin: 15px 0; }
+        li { padding: 12px; background: #f1f3f5; margin: 6px 0; border-radius: 8px; font-weight: 500; }
+        hr { border: 0; height: 1px; background: #eee; margin: 20px 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎭 온라인 라이어 게임</h1>
+
+    <div id="login-screen">
+        <input type="text" id="nickname-input" placeholder="닉네임 입력"><br>
+        <button class="btn" onclick="createRoom()">방 만들기</button>
+        <hr>
+        <input type="text" id="room-id-input" placeholder="방 코드 4자리"><br>
+        <button class="btn btn-secondary" onclick="joinRoom()">방 참여하기</button>
+    </div>
+
+    <div id="lobby-screen" class="hidden">
+        <h2>방 코드: <span id="display-room-id" style="color: #e74c3c;"></span></h2>
+        <h3>참여 인원 (<span id="player-count">0</span>/6)</h3>
+        <ul id="player-list"></ul>
+        <button id="start-btn" class="btn" onclick="startGame()">게임 시작하기</button>
+    </div>
+
+    <div id="game-screen" class="hidden">
+        <h2>게임 진행 중</h2>
+        <div class="card">
+            <p>카테고리: <strong id="display-category"></strong></p>
+            <div id="display-word" class="word"></div>
+        </div>
+        <p>각자 순서대로 단어를 설명하세요!</p>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    let currentRoomId = '';
+    let myNickname = '';
+
+    function createRoom() {
+        myNickname = document.getElementById('nickname-input').value.trim();
+        if (!myNickname) return alert('닉네임을 입력하세요.');
+        socket.emit('createRoom', { nickname: myNickname });
+    }
+
+    function joinRoom() {
+        myNickname = document.getElementById('nickname-input').value.trim();
+        const roomId = document.getElementById('room-id-input').value.trim();
+        if (!myNickname || !roomId) return alert('닉네임과 방 코드를 입력하세요.');
+        socket.emit('joinRoom', { roomId, nickname: myNickname });
+    }
+
+    function startGame() { socket.emit('startGame', currentRoomId); }
+
+    socket.on('roomCreated', ({ roomId }) => { currentRoomId = roomId; showLobby(roomId); });
+    socket.on('joinedRoom', ({ roomId }) => {
+        currentRoomId = roomId; showLobby(roomId);
+        document.getElementById('start-btn').style.display = 'none';
+    });
+
+    socket.on('updatePlayers', (players) => {
+        const list = document.getElementById('player-list');
+        list.innerHTML = '';
+        players.forEach(p => {
+            const li = document.createElement('li');
+            li.innerText = p.nickname;
+            list.appendChild(li);
+        });
+        document.getElementById('player-count').innerText = players.length;
+    });
+
+    socket.on('gameStarted', (data) => {
+        document.getElementById('lobby-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        document.getElementById('display-category').innerText = data.category;
+        document.getElementById('display-word').innerText = data.isLiar ? "🚨 당신은 라이어입니다!" : `제시어: ${data.word}`;
+    });
+
+    socket.on('errorMsg', (msg) => alert(msg));
+
+    function showLobby(roomId) {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('lobby-screen').classList.remove('hidden');
+        document.getElementById('display-room-id').innerText = roomId;
+    }
+</script>
+
+</body>
+</html>
