@@ -14,21 +14,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const rooms = {};
 
-const wordList = [
-  { category: "음식", word: "떡볶이" },
-  { category: "음식", word: "치킨" },
-  { category: "음식", word: "삼겹살" },
-  { category: "동물", word: "호랑이" },
-  { category: "동물", word: "강아지" },
-  { category: "장소", word: "놀이공원" },
-  { category: "장소", word: "영화관" }
-];
+// 카테고리별 단어 목록 (원하시는 단어를 얼마든지 추가할 수 있습니다!)
+const wordData = {
+  "음식": ["떡볶이", "치킨", "삼겹살", "라면", "피자", "초밥", "짜장면", "족발"],
+  "동물": ["호랑이", "사자", "강아지", "고양이", "토끼", "기린", "코끼리", "판다"],
+  "장소": ["놀이공원", "영화관", "공항", "학교", "도서관", "해수욕장", "노래방", "수영장"],
+  "직업": ["경찰", "소방관", "의사", "교사", "요리사", "비행기 조종사", "연예인", "운동선수"]
+};
 
 io.on('connection', (socket) => {
   socket.on('createRoom', ({ nickname }) => {
     const roomId = Math.floor(1000 + Math.random() * 9000).toString();
     rooms[roomId] = {
-      hostId: socket.id, // 방장 ID 저장
+      hostId: socket.id,
       players: [{ id: socket.id, nickname }],
       state: 'waiting',
       wordObj: null,
@@ -36,7 +34,7 @@ io.on('connection', (socket) => {
     };
     
     socket.join(roomId);
-    socket.emit('roomCreated', { roomId, nickname, isHost: true });
+    socket.emit('roomCreated', { roomId, nickname, isHost: true, categories: Object.keys(wordData) });
     io.to(roomId).emit('updatePlayers', rooms[roomId].players);
   });
 
@@ -48,43 +46,48 @@ io.on('connection', (socket) => {
 
     room.players.push({ id: socket.id, nickname });
     socket.join(roomId);
-    socket.emit('joinedRoom', { roomId, nickname, isHost: false });
+    socket.emit('joinedRoom', { roomId, nickname, isHost: false, categories: Object.keys(wordData) });
     io.to(roomId).emit('updatePlayers', room.players);
   });
 
-  // 게임 시작
-  socket.on('startGame', (roomId) => {
+  // 게임 시작 (방장이 선택한 카테고리 반영)
+  socket.on('startGame', ({ roomId, selectedCategory }) => {
     const room = rooms[roomId];
     if (!room) return;
     if (room.players.length < 2) return socket.emit('errorMsg', '최소 2명 이상이어야 합니다.');
 
+    // 선택한 카테고리의 단어 목록 불러오기
+    const list = wordData[selectedCategory] || wordData["음식"];
+    
+    // 최소 2개 이상의 서로 다른 단어 2개 선택 (시민용, 라이어용)
+    const shuffled = [...list].sort(() => 0.5 - Math.random());
+    const citizenWord = shuffled[0];
+    const liarWord = shuffled[1];
+
     room.state = 'playing';
-    room.wordObj = wordList[Math.floor(Math.random() * wordList.length)];
     const liarIndex = Math.floor(Math.random() * room.players.length);
     room.liarId = room.players[liarIndex].id;
 
+    // 각 유저에게 제시어 전달 (바보모드: 라이어에겐 라이어용 단어를 지급!)
     room.players.forEach(player => {
+      const isLiar = player.id === room.liarId;
       io.to(player.id).emit('gameStarted', {
-        isLiar: player.id === room.liarId,
-        category: room.wordObj.category,
-        word: room.wordObj.word,
+        category: selectedCategory,
+        word: isLiar ? liarWord : citizenWord, // 라이어는 은밀하게 다른 단어를 받음!
         isHost: player.id === room.hostId
       });
     });
   });
 
-  // 방장이 게임 종료/투표 화면으로 전환 요청
   socket.on('requestVoteScreen', (roomId) => {
     const room = rooms[roomId];
     if (!room || socket.id !== room.hostId) return;
 
-    // 모든 참가자에게 투표 화면 상태 전달 (방장에겐 지목용 플레이어 리스트 제공)
     io.to(roomId).emit('showVoteScreen', {
       players: room.players
     });
   });
 
-  // 방장이 라이어 지목
   socket.on('selectLiarCandidate', ({ roomId, candidateId }) => {
     const room = rooms[roomId];
     if (!room || socket.id !== room.hostId) return;
@@ -94,14 +97,12 @@ io.on('connection', (socket) => {
 
     const isCorrect = candidateId === room.liarId;
 
-    // 모든 플레이어에게 검증 결과 전송
     io.to(roomId).emit('voteResult', {
       candidateName: candidate.nickname,
       isCorrect: isCorrect
     });
   });
 
-  // 게임 재시작 (대기실로 돌아가기)
   socket.on('restartGame', (roomId) => {
     const room = rooms[roomId];
     if (!room || socket.id !== room.hostId) return;
@@ -119,7 +120,6 @@ io.on('connection', (socket) => {
         if (room.players.length === 0) {
           delete rooms[roomId];
         } else {
-          // 방장이 나가면 다음 사람에게 방장 위임
           if (socket.id === room.hostId) {
             room.hostId = room.players[0].id;
           }
