@@ -6,15 +6,10 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 
-// Socket.io 설정 (CORS 및 정적 파일 연결)
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// public 폴더를 정적 파일 폴더로 지정
 app.use(express.static(path.join(__dirname, 'public')));
 
 const rooms = {};
@@ -30,11 +25,10 @@ const wordList = [
 ];
 
 io.on('connection', (socket) => {
-  console.log('유저 접속:', socket.id);
-
   socket.on('createRoom', ({ nickname }) => {
     const roomId = Math.floor(1000 + Math.random() * 9000).toString();
     rooms[roomId] = {
+      hostId: socket.id, // 방장 ID 저장
       players: [{ id: socket.id, nickname }],
       state: 'waiting',
       wordObj: null,
@@ -42,7 +36,7 @@ io.on('connection', (socket) => {
     };
     
     socket.join(roomId);
-    socket.emit('roomCreated', { roomId, nickname });
+    socket.emit('roomCreated', { roomId, nickname, isHost: true });
     io.to(roomId).emit('updatePlayers', rooms[roomId].players);
   });
 
@@ -54,10 +48,11 @@ io.on('connection', (socket) => {
 
     room.players.push({ id: socket.id, nickname });
     socket.join(roomId);
-    socket.emit('joinedRoom', { roomId, nickname });
+    socket.emit('joinedRoom', { roomId, nickname, isHost: false });
     io.to(roomId).emit('updatePlayers', room.players);
   });
 
+  // 게임 시작
   socket.on('startGame', (roomId) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -69,12 +64,50 @@ io.on('connection', (socket) => {
     room.liarId = room.players[liarIndex].id;
 
     room.players.forEach(player => {
-      if (player.id === room.liarId) {
-        io.to(player.id).emit('gameStarted', { isLiar: true, category: room.wordObj.category });
-      } else {
-        io.to(player.id).emit('gameStarted', { isLiar: false, category: room.wordObj.category, word: room.wordObj.word });
-      }
+      io.to(player.id).emit('gameStarted', {
+        isLiar: player.id === room.liarId,
+        category: room.wordObj.category,
+        word: room.wordObj.word,
+        isHost: player.id === room.hostId
+      });
     });
+  });
+
+  // 방장이 게임 종료/투표 화면으로 전환 요청
+  socket.on('requestVoteScreen', (roomId) => {
+    const room = rooms[roomId];
+    if (!room || socket.id !== room.hostId) return;
+
+    // 모든 참가자에게 투표 화면 상태 전달 (방장에겐 지목용 플레이어 리스트 제공)
+    io.to(roomId).emit('showVoteScreen', {
+      players: room.players
+    });
+  });
+
+  // 방장이 라이어 지목
+  socket.on('selectLiarCandidate', ({ roomId, candidateId }) => {
+    const room = rooms[roomId];
+    if (!room || socket.id !== room.hostId) return;
+
+    const candidate = room.players.find(p => p.id === candidateId);
+    if (!candidate) return;
+
+    const isCorrect = candidateId === room.liarId;
+
+    // 모든 플레이어에게 검증 결과 전송
+    io.to(roomId).emit('voteResult', {
+      candidateName: candidate.nickname,
+      isCorrect: isCorrect
+    });
+  });
+
+  // 게임 재시작 (대기실로 돌아가기)
+  socket.on('restartGame', (roomId) => {
+    const room = rooms[roomId];
+    if (!room || socket.id !== room.hostId) return;
+
+    room.state = 'waiting';
+    io.to(roomId).emit('returnToLobby');
   });
 
   socket.on('disconnect', () => {
@@ -83,8 +116,15 @@ io.on('connection', (socket) => {
       const index = room.players.findIndex(p => p.id === socket.id);
       if (index !== -1) {
         room.players.splice(index, 1);
-        if (room.players.length === 0) delete rooms[roomId];
-        else io.to(roomId).emit('updatePlayers', room.players);
+        if (room.players.length === 0) {
+          delete rooms[roomId];
+        } else {
+          // 방장이 나가면 다음 사람에게 방장 위임
+          if (socket.id === room.hostId) {
+            room.hostId = room.players[0].id;
+          }
+          io.to(roomId).emit('updatePlayers', room.players);
+        }
         break;
       }
     }
