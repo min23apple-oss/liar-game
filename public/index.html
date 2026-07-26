@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ワールドウルフ</title>
+    <title>ワードウルフ</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -52,7 +52,7 @@
 <body>
 
 <div class="container">
-    <h1>🤡 ワールドウルフ</h1>
+    <h1>🤡 ワードウルフ</h1>
 
     <!-- 1. 로그인/방 입장 화면 -->
     <div id="login-screen">
@@ -86,7 +86,7 @@
             <p>カテゴリー: <strong id="display-category"></strong></p>
             <div id="display-word" class="word"></div>
         </div>
-        <p style="color: #888; font-size: 14px;">自分の単語を説明しましょう！</p>
+        <p style="color: #888; font-size: 14px;">自分のワードを説明しましょう！</p>
         <button id="host-end-btn" class="btn btn-danger hidden" onclick="requestVoteScreen()">ゲーム終わり、ウルフ選択</button>
     </div>
 
@@ -191,7 +191,7 @@
         document.getElementById('display-category').innerText = data.category;
         
         // 바보모드: 누구에게나 단어가 자연스럽게 표시됩니다!
-        document.getElementById('display-word').innerText = `単語: ${data.word}`;
+        document.getElementById('display-word').innerText = `ワード: ${data.word}`;
 
         if (data.isHost) {
             document.getElementById('host-end-btn').classList.remove('hidden');
