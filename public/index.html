@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>온라인 라이어 게임 (바보모드)</title>
+    <title>ワールドウルフ</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -52,15 +52,15 @@
 <body>
 
 <div class="container">
-    <h1>🤡 라이어 게임 (바보모드)</h1>
+    <h1>🤡 ワールドウルフ</h1>
 
     <!-- 1. 로그인/방 입장 화면 -->
     <div id="login-screen">
-        <input type="text" id="nickname-input" placeholder="닉네임 입력"><br>
-        <button class="btn" onclick="createRoom()">방 만들기</button>
+        <input type="text" id="nickname-input" placeholder="名前を書いてください"><br>
+        <button class="btn" onclick="createRoom()">部屋を作る</button>
         <hr>
-        <input type="text" id="room-id-input" placeholder="방 코드 4자리"><br>
-        <button class="btn btn-secondary" onclick="joinRoom()">방 참여하기</button>
+        <input type="text" id="room-id-input" placeholder="部屋コード"><br>
+        <button class="btn btn-secondary" onclick="joinRoom()"></button>部屋に参加する</button>
     </div>
 
     <!-- 2. 대기실 화면 -->
@@ -69,46 +69,46 @@
         
         <!-- 방장 전용 카테고리 선택 창 -->
         <div id="category-select-box" class="hidden">
-            <label for="category-select">📌 카테고리 선택:</label>
+            <label for="category-select">📌 カテゴリー選択:</label>
             <select id="category-select"></select>
         </div>
 
-        <h3>참여 인원 (<span id="player-count">0</span>/6)</h3>
+        <h3>参加人数 (<span id="player-count">0</span>/6)</h3>
         <ul id="player-list"></ul>
-        <button id="start-btn" class="btn hidden" onclick="startGame()">게임 시작하기</button>
-        <p id="wait-msg" style="color: #666;">방장이 게임을 시작하기를 기다리는 중...</p>
+        <button id="start-btn" class="btn hidden" onclick="startGame()">スタート！</button>
+        <p id="wait-msg" style="color: #666;">ちょっと待ってください...</p>
     </div>
 
     <!-- 3. 게임 진행 화면 -->
     <div id="game-screen" class="hidden">
-        <h2>게임 진행 중</h2>
+        <h2>ゲーム中</h2>
         <div class="card">
-            <p>카테고리: <strong id="display-category"></strong></p>
+            <p>カテゴリー: <strong id="display-category"></strong></p>
             <div id="display-word" class="word"></div>
         </div>
-        <p style="color: #888; font-size: 14px;">⚠️ 자신도 모르는 사이에 다른 단어를 받은 '바보'가 있을 수 있습니다!</p>
-        <button id="host-end-btn" class="btn btn-danger hidden" onclick="requestVoteScreen()">게임 종료 및 라이어 지목</button>
+        <p style="color: #888; font-size: 14px;">自分の単語を説明しましょう！</p>
+        <button id="host-end-btn" class="btn btn-danger hidden" onclick="requestVoteScreen()">ゲーム終わり、ウルフ選択</button>
     </div>
 
     <!-- 4. 투표 및 지목 화면 -->
     <div id="vote-screen" class="hidden">
-        <h2>라이어 지목</h2>
+        <h2>ウルフは誰？</h2>
         <div id="host-vote-section" class="hidden">
-            <p>혼자 이상한 소리를 한 사람을 선택하세요!</p>
+            <p>ウルフを選んでください！</p>
             <div id="candidate-list"></div>
         </div>
         <div id="guest-vote-section" class="hidden">
-            <p>사회자(방장)가 라이어를 지목하고 있습니다...</p>
+            <p>ちょっと待ってください！</p>
         </div>
     </div>
 
     <!-- 5. 결과 화면 -->
     <div id="result-screen" class="hidden">
-        <h2>검증 결과</h2>
+        <h2>結果</h2>
         <div id="result-message" class="result-box"></div>
         
-        <button id="restart-btn" class="btn hidden" onclick="restartGame()">새 게임으로 이동 (대기실)</button>
-        <button id="retry-vote-btn" class="btn btn-secondary hidden" onclick="backToVoteScreen()">다시 지목하기</button>
+        <button id="restart-btn" class="btn hidden" onclick="restartGame()">新しいゲーム</button>
+        <button id="retry-vote-btn" class="btn btn-secondary hidden" onclick="backToVoteScreen()">他の人を選んでください！</button>
     </div>
 </div>
 
@@ -236,11 +236,11 @@
 
         if (isCorrect) {
             msgDiv.className = 'result-box result-correct';
-            msgDiv.innerText = `🎉 ${candidateName}은(는) 라이어(바보)가 맞습니다!`;
+            msgDiv.innerText = `🎉 ${candidateName}은(는) はウルフです！`;
             if (amIHost) restartBtn.classList.remove('hidden');
         } else {
             msgDiv.className = 'result-box result-wrong';
-            msgDiv.innerText = `❌ ${candidateName}은(는) 억울한 시민입니다!`;
+            msgDiv.innerText = `❌ ${candidateName}はウルフじゃないです！`;
             if (amIHost) retryBtn.classList.remove('hidden');
         }
     });
