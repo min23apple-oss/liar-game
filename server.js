@@ -1,12 +1,21 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
 
-app.use(express.static('public'));
+// Socket.io 설정 (CORS 및 정적 파일 연결)
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// public 폴더를 정적 파일 폴더로 지정
+app.use(express.static(path.join(__dirname, 'public')));
 
 const rooms = {};
 
@@ -21,6 +30,8 @@ const wordList = [
 ];
 
 io.on('connection', (socket) => {
+  console.log('유저 접속:', socket.id);
+
   socket.on('createRoom', ({ nickname }) => {
     const roomId = Math.floor(1000 + Math.random() * 9000).toString();
     rooms[roomId] = {
@@ -80,5 +91,5 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
